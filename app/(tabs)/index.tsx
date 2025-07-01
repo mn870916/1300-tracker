@@ -1,17 +1,11 @@
+import { Button } from "@/components/Buttons";
 import TrackingControls from "@/components/tracking/TrackingControls";
+import VehicleModal from "@/components/tracking/VehicleModal";
 import { saveRoute } from "@/lib/storage";
 import { Vehicle } from "@/types/common";
 import * as Location from "expo-location";
 import React, { useEffect, useRef, useState } from "react";
-import {
-  Alert,
-  Image,
-  Modal,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, StyleSheet, View } from "react-native";
 import MapView, { Polyline, Region } from "react-native-maps";
 
 export default function TrackingScreen() {
@@ -114,52 +108,13 @@ export default function TrackingScreen() {
     }
   };
 
-  const renderVehicleModal = () => (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={isVehicleModalVisible}
-      onRequestClose={() => setVehicleModalVisible(!isVehicleModalVisible)}
-    >
-      <View style={styles.modalCenteredView}>
-        <View style={styles.modalView}>
-          <Text style={styles.modalText}>請選擇本次使用的車款</Text>
-          <TouchableOpacity
-            style={styles.modalButton}
-            onPress={() => handleStartTracking(Vehicle.CorollaSport)}
-          >
-            <Image
-              source={require("@/assets/images/corolla-sport.png")}
-              style={styles.vehicleImage}
-            />
-            <Text style={styles.modalButtonText}>{Vehicle.CorollaSport}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.modalButton}
-            onPress={() => handleStartTracking(Vehicle.CygnusX)}
-          >
-            <Image
-              source={require("@/assets/images/cygnusx.png")}
-              style={styles.vehicleImage}
-            />
-            <Text style={styles.modalButtonText}>{Vehicle.CygnusX}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.cancelButton]}
-            onPress={() => setVehicleModalVisible(false)}
-          >
-            <Text style={[styles.modalButtonText, { color: "white" }]}>
-              取消
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
-
   return (
     <View style={styles.container}>
-      {renderVehicleModal()}
+      <VehicleModal
+        visible={isVehicleModalVisible}
+        onClose={() => setVehicleModalVisible(false)}
+        onSelectVehicle={handleStartTracking}
+      />
       <MapView
         ref={mapRef}
         style={styles.map}
@@ -168,7 +123,6 @@ export default function TrackingScreen() {
         showsMyLocationButton={true}
       >
         <Polyline
-          // **BUG 修正**: 映射以取得座標
           coordinates={routeCoordinates.map((loc) => loc.coords)}
           strokeColor="#0000FF"
           strokeWidth={6}
@@ -199,55 +153,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderTopWidth: 1,
     borderTopColor: "#ccc",
-  },
-  modalCenteredView: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.5)",
-  },
-  modalView: {
-    margin: 20,
-    backgroundColor: "white",
-    borderRadius: 20,
-    padding: 25,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  modalText: {
-    marginBottom: 20,
-    textAlign: "center",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  modalButton: {
-    borderRadius: 10,
-    padding: 10,
-    elevation: 2,
-    marginTop: 15,
-    width: 250,
-    alignItems: "center",
-    backgroundColor: "#f1f1f1",
-  },
-  modalButtonText: { fontSize: 16, fontWeight: "500", marginTop: 8 },
-  vehicleImage: {
-    width: 200,
-    height: 120,
-    borderRadius: 8,
-    marginBottom: 5,
-    resizeMode: "contain",
-  },
-  cancelButton: {
-    backgroundColor: "gray",
-    borderRadius: 10,
-    padding: 15,
-    elevation: 2,
-    marginTop: 20,
-    width: 250,
-    alignItems: "center",
   },
 });

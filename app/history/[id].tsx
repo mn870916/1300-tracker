@@ -1,19 +1,12 @@
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { getAllRoutes } from "@/lib/storage";
 import { Route, Vehicle } from "@/types/common";
 import { FontAwesome } from "@expo/vector-icons";
 import type { LocationObject } from "expo-location";
 import { useLocalSearchParams } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Animated,
-  Dimensions,
-  Image,
-  PanResponder,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import React, { createRef, useEffect, useState } from "react";
+import { Dimensions, Image, StyleSheet, Text, View } from "react-native";
+import ActionSheet, { ActionSheetRef } from "react-native-actions-sheet";
 import MapView, { Marker, Polyline, Region } from "react-native-maps"; // 匯入 Marker
 
 const { width, height } = Dimensions.get("window");
@@ -100,39 +93,7 @@ export default function HistoryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [route, setRoute] = useState<Route | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  const pan = useRef(new Animated.ValueXY()).current;
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        pan.setOffset({ x: 0, y: pan.y._value });
-      },
-      onPanResponderMove: Animated.event([null, { dy: pan.y }], {
-        useNativeDriver: false,
-      }),
-      onPanResponderRelease: (e, gesture) => {
-        pan.flattenOffset();
-        if (gesture.dy < -50) {
-          Animated.spring(pan.y, {
-            toValue: -DRAWER_FULL_HEIGHT,
-            useNativeDriver: false,
-          }).start();
-        } else if (gesture.dy > 50) {
-          Animated.spring(pan.y, {
-            toValue: 0,
-            useNativeDriver: false,
-          }).start();
-        }
-      },
-    })
-  ).current;
-
-  const translateY = pan.y.interpolate({
-    inputRange: [-DRAWER_FULL_HEIGHT, 0],
-    outputRange: [-DRAWER_FULL_HEIGHT, 0],
-    extrapolate: "clamp",
-  });
+  const actionSheetRef = createRef<ActionSheetRef>();
 
   useEffect(() => {
     const loadRoute = async () => {
@@ -144,6 +105,7 @@ export default function HistoryDetailScreen() {
         const allRoutes = await getAllRoutes();
         const foundRoute = allRoutes.find((r) => r.id === id);
         setRoute(foundRoute || null);
+        actionSheetRef.current?.show();
       } catch (error) {
         console.error("讀取單筆路線失敗", error);
       } finally {
@@ -151,20 +113,16 @@ export default function HistoryDetailScreen() {
       }
     };
     loadRoute();
-  }, [id]);
+  }, [actionSheetRef, id]);
 
-  if (isLoading)
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  if (!route)
+  if (isLoading) return <LoadingSpinner />;
+  if (!route) {
     return (
       <View style={styles.centered}>
         <Text style={styles.errorText}>找不到這筆歷史紀錄</Text>
       </View>
     );
+  }
 
   const initialRegion = calculateRegion(route.locations);
   const stats = calculateRouteStats(route.locations);
@@ -212,13 +170,16 @@ export default function HistoryDetailScreen() {
         )}
       </MapView>
 
-      <Animated.View
-        style={[styles.drawer, { transform: [{ translateY }] }]}
-        {...panResponder.panHandlers}
+      <ActionSheet
+        ref={actionSheetRef}
+        backgroundInteractionEnabled
+        gestureEnabled
+        closable={false}
+        containerStyle={{
+          borderWidth: 1,
+          borderColor: "#f0f0f0",
+        }}
       >
-        <View style={styles.dragHandleContainer}>
-          <View style={styles.dragHandle} />
-        </View>
         <View style={styles.drawerHeader}>
           <Image
             source={vehicleImages[route.vehicle]}
@@ -245,7 +206,7 @@ export default function HistoryDetailScreen() {
             <Text style={styles.statLabel}>總時間</Text>
           </View>
         </View>
-      </Animated.View>
+      </ActionSheet>
     </View>
   );
 }

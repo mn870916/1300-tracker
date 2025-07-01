@@ -45,13 +45,13 @@ export default function TabLayout() {
         }}
       />
       {/* 第三個 Tab: 設定 */}
-      <Tabs.Screen
+      {/* <Tabs.Screen
         name="settings" // 對應到 app/(tabs)/settings.tsx 檔案
         options={{
           title: "設定",
           tabBarIcon: ({ color }) => <TabBarIcon name="cog" color={color} />,
         }}
-      />
+      /> */}
     </Tabs>
   );
 }

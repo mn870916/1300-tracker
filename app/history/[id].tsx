@@ -1,8 +1,8 @@
 import { LoadingSpinner } from "@/components/LoadingSpinner";
-import { getAllRoutes } from "@/lib/storage";
+import { storage } from "@/lib/storage";
 import { Route, Vehicle } from "@/types/common";
 import { FontAwesome } from "@expo/vector-icons";
-import type { LocationObject } from "expo-location";
+import type { LocationObject, LocationObjectCoords } from "expo-location";
 import { useLocalSearchParams } from "expo-router";
 import React, { createRef, useEffect, useState } from "react";
 import { Dimensions, Image, StyleSheet, Text, View } from "react-native";
@@ -20,23 +20,22 @@ const vehicleImages = {
   [Vehicle.CygnusX]: require("@/assets/images/cygnusx.png"),
 };
 
-// Haversine 公式計算兩點間距離 (回傳公尺)
 const getDistance = (
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
+  loc1: LocationObjectCoords,
+  loc2: LocationObjectCoords
 ) => {
-  const R = 6371e3;
-  const φ1 = (lat1 * Math.PI) / 180,
-    φ2 = (lat2 * Math.PI) / 180;
-  const Δφ = ((lat2 - lat1) * Math.PI) / 180,
-    Δλ = ((lon2 - lon1) * Math.PI) / 180;
+  const R = 6371e3; // metres
+  const φ1 = (loc1.latitude * Math.PI) / 180; // φ, λ in radians
+  const φ2 = (loc2.latitude * Math.PI) / 180;
+  const Δφ = ((loc2.latitude - loc1.latitude) * Math.PI) / 180;
+  const Δλ = ((loc2.longitude - loc1.longitude) * Math.PI) / 180;
+
   const a =
     Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
     Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+
+  return R * c; // in metres
 };
 
 // 計算整條路線的統計數據
@@ -44,12 +43,7 @@ const calculateRouteStats = (locations: LocationObject[]) => {
   if (locations.length < 2) return { distance: 0, duration: 0, avgSpeed: 0 };
   let totalDistance = 0;
   for (let i = 0; i < locations.length - 1; i++) {
-    totalDistance += getDistance(
-      locations[i].coords.latitude,
-      locations[i].coords.longitude,
-      locations[i + 1].coords.latitude,
-      locations[i + 1].coords.longitude
-    );
+    totalDistance += getDistance(locations[i].coords, locations[i + 1].coords);
   }
   const startTime = locations[0].timestamp,
     endTime = locations[locations.length - 1].timestamp;
@@ -71,11 +65,11 @@ const calculateRegion = (locations: LocationObject[]): Region | undefined => {
     maxLat = locations[0].coords.latitude,
     minLng = locations[0].coords.longitude,
     maxLng = locations[0].coords.longitude;
-  locations.forEach(({ coords }) => {
-    minLat = Math.min(minLat, coords.latitude);
-    maxLat = Math.max(maxLat, coords.latitude);
-    minLng = Math.min(minLng, coords.longitude);
-    maxLng = Math.max(maxLng, coords.longitude);
+  locations.forEach((e) => {
+    minLat = Math.min(minLat, e.coords.latitude);
+    maxLat = Math.max(maxLat, e.coords.latitude);
+    minLng = Math.min(minLng, e.coords.longitude);
+    maxLng = Math.max(maxLng, e.coords.longitude);
   });
   const midLat = (minLat + maxLat) / 2,
     midLng = (minLng + maxLng) / 2;
@@ -102,10 +96,11 @@ export default function HistoryDetailScreen() {
         return;
       }
       try {
-        const allRoutes = await getAllRoutes();
+        const allRoutes = await storage.getHistory();
+
         const foundRoute = allRoutes.find((r) => r.id === id);
         setRoute(foundRoute || null);
-        actionSheetRef.current?.show();
+        console.log(foundRoute);
       } catch (error) {
         console.error("讀取單筆路線失敗", error);
       } finally {
@@ -113,7 +108,11 @@ export default function HistoryDetailScreen() {
       }
     };
     loadRoute();
-  }, [actionSheetRef, id]);
+  }, [id]);
+
+  useEffect(() => {
+    actionSheetRef.current?.show();
+  }, [actionSheetRef]);
 
   if (isLoading) return <LoadingSpinner />;
   if (!route) {
@@ -126,11 +125,10 @@ export default function HistoryDetailScreen() {
 
   const initialRegion = calculateRegion(route.locations);
   const stats = calculateRouteStats(route.locations);
-  const startPoint =
-    route.locations.length > 0 ? route.locations[0].coords : null;
+  const startPoint = route.locations.length > 0 ? route.locations[0] : null;
   const endPoint =
     route.locations.length > 1
-      ? route.locations[route.locations.length - 1].coords
+      ? route.locations[route.locations.length - 1]
       : null;
 
   const formatDuration = (s: number) => {
@@ -157,14 +155,22 @@ export default function HistoryDetailScreen() {
 
         {/* 起點標示 */}
         {startPoint && (
-          <Marker coordinate={startPoint} title="起點" anchor={{ x: 0, y: 0 }}>
+          <Marker
+            coordinate={startPoint.coords}
+            title="起點"
+            anchor={{ x: 0, y: 0 }}
+          >
             <View style={[styles.markerCircle, styles.startMarker]} />
           </Marker>
         )}
 
         {/* 終點標示 */}
         {endPoint && (
-          <Marker coordinate={endPoint} title="終點" anchor={{ x: 0, y: 0 }}>
+          <Marker
+            coordinate={endPoint.coords}
+            title="終點"
+            anchor={{ x: 0, y: 0 }}
+          >
             <View style={[styles.markerCircle, styles.endMarker]} />
           </Marker>
         )}

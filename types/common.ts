@@ -10,6 +10,6 @@ export enum Vehicle {
 export type Route = {
   id: string;
   date: number; // 使用時間戳 (timestamp) 儲存，方便排序
-  locations: LocationObject[]; // **BUG 修正**: 儲存完整的 LocationObject
+  locations: LocationObject[];
   vehicle: Vehicle; // 使用 Enum 型別
 };

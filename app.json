@@ -16,7 +16,16 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app uses your location to track your journey.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app uses your location to track your journey even when the app is in the background.",
+        "NSLocationAlwaysUsageDescription": "This app uses your location to track your journey even when the app is in the background.",
+        "UIBackgroundModes": [
+          "location",
+          "fetch"
+        ]
+      }
     },
     "web": {
       "bundler": "metro",

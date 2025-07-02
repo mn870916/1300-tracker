@@ -1,7 +1,6 @@
-import { Button } from "@/components/Buttons";
 import TrackingControls from "@/components/tracking/TrackingControls";
 import VehicleModal from "@/components/tracking/VehicleModal";
-import { saveRoute } from "@/lib/storage";
+import { storage } from "@/lib/storage";
 import { Vehicle } from "@/types/common";
 import * as Location from "expo-location";
 import React, { useEffect, useRef, useState } from "react";
@@ -13,16 +12,11 @@ export default function TrackingScreen() {
     undefined
   );
   const [isTracking, setIsTracking] = useState(false);
-  // **BUG 修正**: 狀態型別改為 Location.LocationObject[]
   const [routeCoordinates, setRouteCoordinates] = useState<
     Location.LocationObject[]
   >([]);
-  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [isVehicleModalVisible, setVehicleModalVisible] = useState(false);
 
-  const locationSubscription = useRef<Location.LocationSubscription | null>(
-    null
-  );
   const mapRef = useRef<MapView | null>(null);
 
   useEffect(() => {
@@ -57,55 +51,28 @@ export default function TrackingScreen() {
 
   const handleStartTracking = async (vehicle: Vehicle) => {
     setVehicleModalVisible(false);
-    setSelectedVehicle(vehicle);
     setRouteCoordinates([]);
     setIsTracking(true);
-    try {
-      locationSubscription.current = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.BestForNavigation,
-          timeInterval: 1000,
-          distanceInterval: 10,
-        },
-        (location) => {
-          setRouteCoordinates((prevCoords) => [...prevCoords, location]);
-          mapRef.current?.animateToRegion({
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          });
-        }
-      );
-    } catch (error) {
-      console.error(error);
-      Alert.alert("錯誤", "無法開始紀錄位置");
-      setIsTracking(false);
-    }
+    await storage.saveCurrentTracking({ vehicle, points: [] });
   };
 
   const handlePauseTracking = () => {
-    locationSubscription.current?.remove();
     setIsTracking(false);
   };
 
-  const handleStopTracking = () => {
-    handlePauseTracking();
-    if (routeCoordinates.length > 1 && selectedVehicle) {
-      saveRoute(routeCoordinates, selectedVehicle)
-        .then(() =>
-          Alert.alert(
-            "紀錄完成",
-            `您使用 ${selectedVehicle} 的軌跡已成功儲存！`
-          )
-        )
-        .catch((err) => {
-          console.error(err);
-          Alert.alert("儲存失敗", "抱歉，儲存軌跡時發生錯誤。");
-        });
+  const handleStopTracking = async () => {
+    setIsTracking(false);
+    const currentTracking = await storage.getCurrentTracking();
+    if (currentTracking && currentTracking.points.length > 1) {
+      await storage.saveRoute(currentTracking.points, currentTracking.vehicle);
+      Alert.alert(
+        "紀錄完成",
+        `您使用 ${currentTracking.vehicle} 的軌跡已成功儲存！`
+      );
     } else {
-      Alert.alert("紀錄未儲存", "您的軌跡太短或未選擇車輛，因此未進行儲存。");
+      Alert.alert("紀錄未儲存", "您的軌跡太短，因此未進行儲存。");
     }
+    await storage.saveCurrentTracking(null);
   };
 
   return (

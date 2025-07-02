@@ -1,6 +1,10 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { Button } from "../Buttons";
+import {
+  startLocationTracking,
+  stopLocationTracking,
+} from "../../lib/location";
 
 type TrackingControlsProps = {
   isTracking: boolean;
@@ -15,6 +19,16 @@ export default function TrackingControls({
   onPause,
   onStop,
 }: TrackingControlsProps) {
+  const handleStart = async () => {
+    await startLocationTracking();
+    onStart();
+  };
+
+  const handleStop = async () => {
+    await stopLocationTracking();
+    onStop();
+  };
+
   return (
     <View style={styles.container}>
       {isTracking ? (
@@ -28,7 +42,7 @@ export default function TrackingControls({
           />
           <Button
             title="停止"
-            onPress={onStop}
+            onPress={handleStop}
             icon="stop"
             variant="destructive"
             style={styles.button}
@@ -37,7 +51,7 @@ export default function TrackingControls({
       ) : (
         <Button
           title="開始紀錄"
-          onPress={onStart}
+          onPress={handleStart}
           icon="play"
           variant="primary"
         />

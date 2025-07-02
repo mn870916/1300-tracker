@@ -1,7 +1,7 @@
-import { deleteRoute, getAllRoutes } from "@/lib/storage";
+import { storage } from "@/lib/storage";
 import { Route, Vehicle } from "@/types/common";
 import { FontAwesome } from "@expo/vector-icons";
-import type { LocationObject } from "expo-location";
+import { LocationObject } from "expo-location";
 import { Link, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
@@ -23,14 +23,16 @@ const RouteItem = ({
   onDelete: (id: string) => void;
 }) => {
   const calculateDistance = (locations: LocationObject[]) => {
-    if (locations.length < 2) return 0;
+    if (!locations || locations.length < 2) return 0;
     let totalDistance = 0;
     for (let i = 0; i < locations.length - 1; i++) {
-      const p1 = locations[i].coords;
-      const p2 = locations[i + 1].coords;
-      const radlat1 = (Math.PI * p1.latitude) / 180;
-      const radlat2 = (Math.PI * p2.latitude) / 180;
-      const theta = p1.longitude - p2.longitude;
+      // 兼容新舊兩種格式
+      const p1 = locations[i];
+      const p2 = locations[i + 1];
+
+      const radlat1 = (Math.PI * p1.coords.latitude) / 180;
+      const radlat2 = (Math.PI * p2.coords.latitude) / 180;
+      const theta = p1.coords.longitude - p2.coords.longitude;
       const radtheta = (Math.PI * theta) / 180;
       let dist =
         Math.sin(radlat1) * Math.sin(radlat2) +
@@ -58,12 +60,12 @@ const RouteItem = ({
           </View>
           <View style={styles.itemDetails}>
             <Text style={styles.itemDate}>
-              {new Date(item.date).toLocaleDateString()}{" "}
+              {new Date(item.date).toLocaleDateString()}
               {new Date(item.date).toLocaleTimeString()}
             </Text>
             <Text style={styles.itemInfo}>
               {/* **BUG 修正**: 傳入 item.locations 並讀取 item.locations.length */}
-              距離: {calculateDistance(item.locations)} 公里 | 紀錄點:{" "}
+              距離: {calculateDistance(item.locations)} 公里 | 紀錄點:
               {item.locations.length}
             </Text>
           </View>
@@ -88,9 +90,9 @@ export default function HistoryScreen() {
   const loadRoutes = async () => {
     setIsLoading(true);
     try {
-      const storedRoutes = await getAllRoutes();
+      const storedRoutes = await storage.getHistory();
       setRoutes(storedRoutes.sort((a, b) => b.date - a.date));
-    } catch (error) {
+    } catch {
       Alert.alert("讀取失敗", "無法從儲存空間讀取歷史紀錄。");
     } finally {
       setIsLoading(false);
@@ -112,7 +114,7 @@ export default function HistoryScreen() {
         text: "確定刪除",
         style: "destructive",
         onPress: async () => {
-          await deleteRoute(id);
+          await storage.deleteRoute(id);
           // 重新載入列表以更新畫面
           loadRoutes();
         },
